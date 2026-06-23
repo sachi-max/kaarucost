@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hate Speech Detector — HindiGuard</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --card: #20202d;
+    --border: #2e2e42;
+    --accent: #6c63ff;
+    --accent-dk: #5249d6;
+    --red: #ff4d6d;
+    --red-dk: #c9184a;
+    --green: #38b000;
+    --green-dk: #2d8a00;
+    --yellow: #f4a261;
+    --text: #e8e8f0;
+    --muted: #8888a8;
+    --shadow: 0 4px 24px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+  header {
+    background: linear-gradient(135deg, #12121c, #1a1a2e);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(108,99,255,.5);
+  }
+  .brand h1 { font-size: 18px; font-weight: 800; letter-spacing: .3px; }
+  .brand p { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: .8px; text-transform: uppercase; }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+
+  .intro {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .intro h2 { font-size: 14px; color: var(--accent); margin-bottom: 10px; font-weight: 700; }
+  .intro ul { padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+  .intro ul li span { color: var(--text); }
+
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .input-card label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    resize: vertical;
+    line-height: 1.6;
+    transition: border-color .2s;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
+  }
+  textarea::placeholder { color: var(--muted); }
+  .char-count {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 6px;
+  }
+  .char-count.warn { color: var(--yellow); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+  .btn {
+    flex: 1;
+    padding: 13px 20px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .3px;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(108,99,255,.35);
+  }
+  .btn-clear {
+    background: var(--card);
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    flex: 0 0 auto;
+    padding: 13px 16px;
+  }
+
+  /* Results */
+  #result { display: none; }
+  .verdict-card {
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 16px;
+    border: 1.5px solid transparent;
+  }
+  .verdict-card.safe {
+    background: rgba(56,176,0,.08);
+    border-color: rgba(56,176,0,.3);
+  }
+  .verdict-card.unsafe {
+    background: rgba(255,77,109,.08);
+    border-color: rgba(255,77,109,.3);
+  }
+  .verdict-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .verdict-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+  .safe .verdict-icon { background: rgba(56,176,0,.2); }
+  .unsafe .verdict-icon { background: rgba(255,77,109,.2); }
+  .verdict-title { font-size: 20px; font-weight: 800; }
+  .safe .verdict-title { color: #5cdb5c; }
+  .unsafe .verdict-title { color: #ff6b85; }
+  .verdict-sub { font-size: 12px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .8px; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+  .badge {
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: capitalize;
+  }
+  .badge-severity-none { background: rgba(56,176,0,.15); color: #5cdb5c; border: 1px solid rgba(56,176,0,.25); }
+  .badge-severity-mild { background: rgba(244,162,97,.12); color: #f4a261; border: 1px solid rgba(244,162,97,.25); }
+  .badge-severity-moderate { background: rgba(255,150,50,.12); color: #ff9632; border: 1px solid rgba(255,150,50,.25); }
+  .badge-severity-severe { background: rgba(255,77,109,.15); color: #ff6b85; border: 1px solid rgba(255,77,109,.25); }
+  .badge-conf { background: rgba(108,99,255,.12); color: #9f97ff; border: 1px solid rgba(108,99,255,.2); }
+  .badge-cat { background: rgba(255,150,50,.1); color: #ffb347; border: 1px solid rgba(255,150,50,.2); }
+
+  .detail-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .detail-card h3 {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .explanation { font-size: 14px; line-height: 1.7; color: var(--text); }
+  .flagged-list { display: flex; flex-wrap: wrap; gap: 7px; }
+  .flagged-phrase {
+    background: rgba(255,77,109,.1);
+    border: 1px solid rgba(255,77,109,.2);
+    color: #ff6b85;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: monospace;
+  }
+  .no-flags { font-size: 13px; color: var(--muted); }
+
+  .try-again-btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all .15s;
+  }
+  .try-again-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Loading */
+  #loading {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 20px;
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { color: var(--muted); font-size: 14px; }
+
+  /* Error */
+  #error-msg {
+    display: none;
+    background: rgba(255,77,109,.08);
+    border: 1px solid rgba(255,77,109,.25);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #ff6b85;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  /* Demo chips */
+  .demo-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; }
+  .demo-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+  .demo-chip {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  .demo-chip:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>HindiGuard</h1>
+      <p>AI-Powered Hate Speech Detector</p>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="intro">
+    <h2>Yeh Tool Kya Karta Hai?</h2>
+    <ul>
+      <li><span>Comment paste karo</span> — kisi bhi language mein (Hindi, English, Hinglish)</li>
+      <li><span>AI analyze karega</span> — nahi ata to bata dega, ata hai to category bhi batayega</li>
+      <li><span>Severity batayega</span> — Mild, Moderate, ya Severe</li>
+      <li><span>Flagged phrases</span> — exactly kaunsa word/phrase problematic hai</li>
+    </ul>
+  </div>
+
+  <div class="input-card">
+    <label>Comment ya Text Yahan Paste Karo</label>
+
+    <div class="demo-label">Quick Examples:</div>
+    <div class="demo-chips">
+      <button class="demo-chip" onclick="setDemo('Aaj ka khana bahut achha tha, shukriya!')">Normal comment</button>
+      <button class="demo-chip" onclick="setDemo('Iss community ke log hamesha galat kaam karte hain, inhe bahar nikaalo!')">Borderline</button>
+      <button class="demo-chip" onclick="setDemo('Great video! Keep up the good work.')">English safe</button>
+      <button class="demo-chip" onclick="setDemo('[Example: slur targeting a group]')">Hate speech</button>
+    </div>
+
+    <textarea
+      id="textInput"
+      placeholder="Yahan koi bhi social media comment, YouTube reply, ya koi bhi text paste karo..."
+      oninput="updateCount()"
+      maxlength="5000"
+    ></textarea>
+    <div class="char-count" id="charCount">0 / 5000</div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
+        🔍 Analyze Karo
+      </button>
+      <button class="btn btn-clear" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <div id="error-msg"></div>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>AI analyze kar raha hai...</p>
+  </div>
+
+  <div id="result"></div>
+
+</div>
+
+<script>
+  function updateCount() {
+    const txt = document.getElementById('textInput').value;
+    const el = document.getElementById('charCount');
+    el.textContent = txt.length + ' / 5000';
+    el.className = 'char-count' + (txt.length > 4500 ? ' warn' : '');
+  }
+
+  function setDemo(text) {
+    document.getElementById('textInput').value = text;
+    updateCount();
+  }
+
+  function clearAll() {
+    document.getElementById('textInput').value = '';
+    updateCount();
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+  }
+
+  function categoryLabel(cat) {
+    const map = {
+      racism: 'Racism', casteism: 'Casteism', sexism: 'Sexism',
+      religious_hatred: 'Religious Hatred', homophobia: 'Homophobia',
+      threats: 'Threats', bullying: 'Bullying', slurs: 'Slurs',
+      incitement_to_violence: 'Violence Incitement'
+    };
+    return map[cat] || cat;
+  }
+
+  function severityLabel(s) {
+    return { none: 'No Hate Speech', mild: 'Mild', moderate: 'Moderate', severe: 'Severe' }[s] || s;
+  }
+
+  function renderResult(data) {
+    const isHate = data.is_hate_speech;
+    const el = document.getElementById('result');
+
+    const categoryBadges = (data.categories || []).map(c =>
+      `<span class="badge badge-cat">${categoryLabel(c)}</span>`
+    ).join('');
+
+    const flaggedHtml = data.flagged_phrases && data.flagged_phrases.length > 0
+      ? data.flagged_phrases.map(p => `<span class="flagged-phrase">${escHtml(p)}</span>`).join('')
+      : '<span class="no-flags">Koi specific phrase flag nahi hua</span>';
+
+    el.innerHTML = `
+      <div class="verdict-card ${isHate ? 'unsafe' : 'safe'}">
+        <div class="verdict-header">
+          <div class="verdict-icon">${isHate ? '🚨' : '✅'}</div>
+          <div>
+            <div class="verdict-title">${isHate ? 'Hate Speech Mili!' : 'Safe Content'}</div>
+            <div class="verdict-sub">${isHate ? 'Yeh comment problematic hai' : 'Koi hate speech nahi mili'}</div>
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge badge-severity-${data.severity}">${severityLabel(data.severity)}</span>
+          <span class="badge badge-conf">Confidence: ${data.confidence}</span>
+          ${categoryBadges}
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <h3>AI Explanation</h3>
+        <p class="explanation">${escHtml(data.explanation || 'No explanation provided.')}</p>
+      </div>
+
+      ${isHate ? `
+      <div class="detail-card">
+        <h3>Flagged Phrases</h3>
+        <div class="flagged-list">${flaggedHtml}</div>
+      </div>` : ''}
+
+      <button class="try-again-btn" onclick="clearAll()">← Naya Comment Check Karo</button>
+    `;
+    el.style.display = 'block';
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function analyze() {
+    const text = document.getElementById('textInput').value.trim();
+    if (!text) {
+      showError('Pehle kuch text enter karo.');
+      return;
+    }
+
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('analyzeBtn').disabled = true;
+
+    try {
+      const res = await fetch('/.netlify/functions/detect-hate-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Server error');
+      }
+
+      renderResult(data);
+    } catch (err) {
+      showError('Error: ' + err.message);
+    } finally {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('analyzeBtn').disabled = false;
+    }
+  }
+
+  // Allow Enter+Ctrl to submit
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('textInput').addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 'Enter') analyze();
+    });
+  });
+</script>
+
+</body>
+</html>
