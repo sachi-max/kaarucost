@@ -24,10 +24,30 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { imageData, mediaType, prompt } = JSON.parse(event.body);
+    const { imageData, mediaType, fileKind, images, prompt, textOnly } = JSON.parse(event.body);
 
-    if (!imageData || !prompt) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing image or prompt" }) };
+    if (!prompt) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing prompt" }) };
+    }
+
+    function blockFor(data, media, kind) {
+      const isPdf = kind === "pdf" || media === "application/pdf";
+      return isPdf
+        ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: data } }
+        : { type: "image", source: { type: "base64", media_type: media || "image/jpeg", data: data } };
+    }
+
+    // Build content: text-only, OR multiple images array, OR single image (legacy)
+    let content;
+    if (textOnly) {
+      content = [{ type: "text", text: prompt }];
+    } else if (Array.isArray(images) && images.length) {
+      content = images.map(im => blockFor(im.data, im.media, im.kind));
+      content.push({ type: "text", text: prompt });
+    } else if (imageData) {
+      content = [blockFor(imageData, mediaType, fileKind), { type: "text", text: prompt }];
+    } else {
+      content = [{ type: "text", text: prompt }];
     }
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -39,13 +59,10 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        max_tokens: textOnly ? 2500 : 1000,
         messages: [{
           role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: imageData } },
-            { type: "text", text: prompt },
-          ],
+          content: content,
         }],
       }),
     });
