@@ -103,11 +103,53 @@
   <div class="card">
     <div class="drop" id="drop">
       <div class="ic">📷</div>
-      <div class="t">Photo daalo / kheencho</div>
-      <div class="s">Wardrobe · sofa · chair · table · metal · mixed — kuch bhi</div>
+      <div class="t">Photo ya PDF drawing daalo</div>
+      <div class="s">Ek item ke kai angles (front/side/inside) ek saath — better accuracy. Ya 1 photo/PDF.</div>
     </div>
-    <input type="file" id="file" accept="image/*" style="display:none">
-    <div id="preview"><img id="img" alt=""></div>
+    <input type="file" id="file" accept="image/*,application/pdf,.pdf" multiple style="display:none">
+    <div id="preview"><div id="thumbs"></div><img id="img" alt="" style="display:none"><div id="pdfTag" style="display:none;padding:14px;background:#f0f0f0;border-radius:8px;font-weight:600;color:#444"></div></div>
+  </div>
+
+  <div id="catBox" style="display:none;margin-bottom:12px">
+    <label style="font-size:13px;font-weight:700;color:#5a4a32;display:block;margin-bottom:5px">📋 Category confirm karo (better accuracy)</label>
+    <select id="catSelect" style="width:100%;padding:11px;border:1.5px solid #d8cdb8;border-radius:9px;font-size:15px;background:#fff">
+      <option value="">Auto — AI khud pehchaane</option>
+      <optgroup label="Beds">
+        <option value="single bed">Single Bed</option>
+        <option value="queen bed">Queen Bed</option>
+        <option value="king bed">King Bed</option>
+      </optgroup>
+      <optgroup label="Sofas">
+        <option value="1 seater sofa">1 Seater Sofa</option>
+        <option value="2 seater sofa">2 Seater Sofa</option>
+        <option value="3 seater sofa">3 Seater Sofa</option>
+        <option value="4 seater sofa">4 Seater Sofa</option>
+        <option value="l-shape sofa">L-Shape Sofa</option>
+      </optgroup>
+      <optgroup label="Dining">
+        <option value="2 seater dining">2 Seater Dining</option>
+        <option value="4 seater dining">4 Seater Dining</option>
+        <option value="6 seater dining">6 Seater Dining</option>
+        <option value="8 seater dining">8 Seater Dining</option>
+        <option value="dining chair">Dining Chair</option>
+      </optgroup>
+      <optgroup label="Tables">
+        <option value="coffee table">Coffee Table</option>
+        <option value="side table">Side Table</option>
+        <option value="console table">Console Table</option>
+        <option value="tv unit">TV Unit</option>
+        <option value="bedside table">Bedside Table</option>
+      </optgroup>
+      <optgroup label="Storage">
+        <option value="wardrobe 2 door">Wardrobe 2-Door</option>
+        <option value="wardrobe 3 door">Wardrobe 3-Door</option>
+        <option value="wardrobe 4 door">Wardrobe 4-Door</option>
+        <option value="bookshelf">Bookshelf</option>
+        <option value="chest of drawers">Chest of Drawers</option>
+      </optgroup>
+      <option value="other">Other / Custom</option>
+    </select>
+    <div style="font-size:11px;color:#9a8d77;margin-top:4px">Category select karoge toh standard dimensions us hisab se pakka lagenge.</div>
   </div>
 
   <button class="btn btn-go" id="goBtn" disabled>📷 Pehle photo daalo</button>
@@ -222,9 +264,35 @@
     </details>
   </div>
 
+  <!-- DETAILED COSTING / BOQ (AI powered) -->
+  <div class="card hidep" id="boqCard">
+    <details class="rates">
+      <summary>📊 Detailed Costing &amp; BOQ banao (AI report)</summary>
+      <div style="margin-top:14px">
+        <div class="hint" style="margin-bottom:10px">Poori production report — BOQ (board/laminate/hardware/consumables), labour, factory→dealer→customer price layers, profit margin, aur cost kam karne ke suggestions. Aapke saved rates use honge.</div>
+        <button class="btn btn-ink" id="boqBtn" style="margin-bottom:8px">🧮 Detailed Report Banao</button>
+        <div id="boqLoading" style="display:none;text-align:center;padding:18px;color:#7a6f5e">AI report bana raha hai… (15-25 sec)</div>
+        <div id="boqErr" style="display:none;background:#fdecea;color:#b3261e;padding:10px;border-radius:8px;font-size:13px;margin-top:8px"></div>
+        <div id="boqResult" style="display:none;margin-top:12px"></div>
+        <button class="btn btn-green hidep" id="boqPdfBtn" style="margin-top:12px">📄 Download Detailed Report PDF</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- PROJECT (multiple items) -->
+  <div class="card hidep" id="projectCard" style="display:none">
+    <div style="font-weight:800;color:#bf6614;margin-bottom:10px">🗂️ Project Items (poora project costing)</div>
+    <div id="projectList"></div>
+    <div class="brow" style="border-top:2px solid #e0d6c4;margin-top:8px;padding-top:8px"><span class="lab"><b>Project Grand Total</b></span><span class="val"><b id="projectTotal" style="color:#bf6614">₹0</b></span></div>
+    <button class="btn btn-green hidep" id="projWaBtn" style="margin-top:10px;background:#25D366;color:#fff">📲 Poora Project WhatsApp pe</button>
+  </div>
+
   <div class="actions hidep no-print" id="finalActions">
     <button class="btn btn-ink" id="resetBtn" style="margin-bottom:0">↺ Nayi Photo</button>
-    <button class="btn btn-green" onclick="window.print()" style="margin-bottom:0">Print Quote</button>
+    <button class="btn" id="addItemBtn" style="margin-bottom:0;background:#3a4654;color:#fff">➕ Is Item Ko Project Me Add Karo</button>
+    <button class="btn btn-green" id="pdfShortBtn" style="margin-bottom:0">📄 Quote PDF (Short)</button>
+    <button class="btn btn-green" id="pdfFullBtn" style="margin-bottom:0">📋 Quote PDF (Detailed)</button>
+    <button class="btn" id="waBtn" style="margin-bottom:0;background:#25D366;color:#fff">📲 WhatsApp Text</button>
   </div>
 </div>
 
